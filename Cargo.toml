@@ -5,3 +5,4 @@ authors = ["lxndio"]
 edition = "2018"
 
 [dependencies]
+image = "*"
