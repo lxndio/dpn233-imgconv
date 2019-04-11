@@ -6,3 +6,4 @@ edition = "2018"
 
 [dependencies]
 image = "*"
+serial = "0.4.0"

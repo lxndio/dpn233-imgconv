@@ -1,5 +1,6 @@
 extern crate image;
 
+use serial::prelude::SerialPort;
 use image::Pixels;
 use image::Luma;
 use image::ImageBuffer;
@@ -12,9 +13,12 @@ fn main() {
     let img_vec = conv_img();
     let printer_data = gen_printer_data(img_vec);
 
-    for byte in printer_data {
+    for byte in &printer_data {
         print!("{:?} ", byte);
     }
+
+    let mut port = serial::open("COM3").unwrap();
+    send_serial(&printer_data, &mut port);
 }
 
 fn conv_img() -> [[bool; 144]; 144] {
@@ -52,10 +56,10 @@ fn gen_printer_data(img_vec: [[bool; 144]; 144]) -> Vec<u8> {
         for x in 0..144 {
             let mut byte: u8 = 0;
             for i in y-8..y-1 {
-                if img_vec[i][x] { byte |= 0b0000_0001 }
+                if !img_vec[i][x] { byte |= 0b0000_0001 }
                 byte = byte.rotate_left(1);
             }
-            if img_vec[y-1][x] { byte |= 0b0000_0001 }
+            if !img_vec[y-1][x] { byte |= 0b0000_0001 }
 
             res.push(byte);
         }
@@ -64,3 +68,17 @@ fn gen_printer_data(img_vec: [[bool; 144]; 144]) -> Vec<u8> {
     res
 }
 
+fn send_serial<T: SerialPort>(data: &Vec<u8>, port: &mut T) {
+    port.reconfigure(&|settings| {
+        settings.set_baud_rate(serial::Baud9600)?;
+        settings.set_char_size(serial::Bits8);
+        settings.set_parity(serial::ParityNone);
+        settings.set_stop_bits(serial::Stop1);
+        settings.set_flow_control(serial::FlowNone);
+        Ok(())
+    });
+
+    port.write(&[27, 64]); // Reset the printer
+
+    port.write(data);
+}
